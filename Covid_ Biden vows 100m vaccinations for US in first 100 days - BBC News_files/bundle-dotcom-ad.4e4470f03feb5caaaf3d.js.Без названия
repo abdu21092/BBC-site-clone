@@ -1,0 +1,1 @@
+(window.coreWebpackJsonp=window.coreWebpackJsonp||[]).push([[14],{231:function(e,n,t){"use strict";t.r(n),t.d(n,"default",(function(){return c}));var o=t(0),r=t.n(o),a=t(83);var c=e=>{let{slot:n,enableDotcomAds:t}=e;return r.a.createElement(a.a,{slotType:n,enable:t})}}}]);

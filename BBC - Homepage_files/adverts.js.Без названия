@@ -1,0 +1,276 @@
+/*jslint browser: true, plusplus: true */
+/*global BBC, bbc, bbcdotcom, define, document, config */
+define(function () {
+    'use strict';
+
+    bbcdotcom.av.emp.adverts = (function () {
+
+        function getCookie(cookieName) {
+            var cookieMatchRegExp = new RegExp(cookieName + '=(.*?)(?:;|$)');
+            var cookieMatch = cookieMatchRegExp.exec(document.cookie);
+            var cookie = (cookieMatch && cookieMatch.length ? cookieMatch[1] : false);
+            return cookie;
+        }
+
+        function enableCompanions() {
+            // DEPRECATED
+        }
+
+        function getLotameString() {
+            var dartCC = "", cci, ccauds = window.ccauds;
+
+            if (typeof ccauds !== 'undefined')
+            {
+                for (cci = 0; cci < ccauds.Profile.Audiences.Audience.length; cci++)
+                {
+                    if (cci > 0) {
+                        dartCC += ",";
+                    }
+                    dartCC += ccauds.Profile.Audiences.Audience[cci].abbr;
+                }
+                return "ccaud%3D" + encodeURIComponent(dartCC) + "%26";
+            } else {
+                return "";
+            }
+        }
+
+        function getGrapeshotString(){
+            if (typeof window.gs_channels !== 'undefined' && window.gs_channels !== 'DEFAULT') {
+                return "gs_cat%3D" + encodeURIComponent(window.gs_channels) + "%26";
+            } else {
+                return "";
+            }
+        }
+
+        function buildCustomParams() {
+            var key,
+                keyValues = bbcdotcom.adverts.keyValues.getAll(),
+                keyValueString = '&cust_params=',
+                uidString;
+
+            for (key in keyValues) {
+                if (keyValues.hasOwnProperty(key) && keyValues[key] !== '') {
+                    keyValueString += key + '%3D' + keyValues[key] + '%26';
+                }
+            }
+
+            keyValueString += getLotameString();
+
+            keyValueString += getGrapeshotString();
+
+            if(bbcdotcom.objects('bbcdotcom.adverts.adUnit.getPreviewUid')) {
+                uidString = 'uid=' + bbcdotcom.adverts.adUnit.getPreviewUid();
+                keyValueString += encodeURIComponent(uidString);
+            }
+            if(bbcdotcom.config.getWindowLocation().pathname.match(/\/embed$/g) !== null){
+                keyValueString += encodeURIComponent('client=embedplayer');
+            }
+
+
+            return keyValueString;
+        }
+
+        function addCompanionDivs(id) {
+            // DEPRECATED
+        }
+
+        function updatePrerollAdTag() {
+            var prerollAdTag = getPrerollAdTag();
+            try{
+                var player = embeddedMedia.players[0], pluginIndex;
+                if(player && player.pluginsToLoad){
+                    for(var i = 0; i < player.pluginsToLoad.length; i++){
+                        if(player.pluginsToLoad[i].data && player.pluginsToLoad[i].data.name && player.pluginsToLoad[i].data.name === 'AdsPluginParameters'){
+                            pluginIndex = i;
+                        }
+                    }
+                    player.pluginsToLoad[pluginIndex].data.data.adTag = prerollAdTag;
+                }
+            }catch(e){}
+        }
+        /**
+         * Get a preroll ad tag for emp.
+         * This is different from the bbccom.js implementation as the ad tag is generated serverside and
+         * added to the page.
+         */
+        function getPrerollAdTag() {
+            var prerollAdTag;
+            if (typeof bbcdotcom !== 'undefined' &&
+                typeof bbcdotcom.objects !== 'undefined' &&
+                bbcdotcom.objects('bbcdotcom.adverts.adUnit.get') &&
+                bbcdotcom.objects('bbcdotcom.adverts.keyValues.getAll')) {
+                prerollAdTag = 'https://pubads.g.doubleclick.net/gampad/ads?' +
+                'sz=640x360&iu=' +
+                bbcdotcom.adverts.adUnit.get() +
+                buildCustomParams() +
+                '&env=vp&gdfp_req=1&impl=s&output=xml_vast3&unviewed_position_start=1' +
+                '&ord=' + (Math.floor(Math .random() * 1000000000)) +
+                // TODO PG look at passing in window.location.href
+                '&url=' + encodeURIComponent(encodeURIComponent(bbcdotcom.config.getWindowLocation().href)) +
+                '&ad_rule=1';
+                /*
+                 * GDPR : check ckns_policy cookie to allow personalised ads or not
+                 *  xx1 : allowed, nothing to do, xx0 : disable personalised ads
+                 */
+                if (bbcdotcom.config && bbcdotcom.config.isNPA && bbcdotcom.config.isNPA()) {
+                    prerollAdTag += '&npa=1&rdp=1';
+                }
+            } else {
+                if(window.bbcdotcom && bbcdotcom.asyncCmd){
+                    bbcdotcom.asyncCmd.push(function(){
+                        bbcdotcom.av.emp.adverts.updatePrerollAdTag();
+                    });
+                }
+            }
+            return prerollAdTag;
+        }
+
+        /**
+         * Get a preroll ad tag and make sure the ad_rule parameter is passed (default value is 1)
+         * The preroll ad tag is used by CPP - SMP player
+         */
+        function getPrerollAdTagWithAdRule(val) {
+            var prerollAdTag = getPrerollAdTag();
+            var regex = new RegExp(/(ad_rule=)\d{1}/g);
+            if( regex.test(prerollAdTag) === false) {
+                prerollAdTag = prerollAdTag + "&ad_rule=" + val || 1;
+            }
+            return prerollAdTag;
+        }
+
+        /**
+         * Get a preroll ad tag specifically tailored to audio
+         */
+        function getPrerollAdTagForAudio() {
+            var prerollAdTag = getPrerollAdTag();
+            // Docs say sz is optional for audio, yet removing it here 400s
+            // so a size of 1x1 is set following Google's examples
+            prerollAdTag = prerollAdTag.replace(/sz=640x360/, "sz=1x1");
+            // Audio ads require env=instream
+            prerollAdTag = prerollAdTag.replace(/env=vp/, "env=instream");
+            // Finally we declare the audio type
+            prerollAdTag = prerollAdTag + "&ad_type=audio";
+            return prerollAdTag;
+        }
+
+        function setupCompanionSlots(playerDomId) {
+            // DEPRECATED
+        }
+
+        function getCompanionSlotId(playerInstanceId) {
+            // DEPRECATED
+        }
+
+        function getCompanionSlots(companionId) {
+            // DEPRECATED
+        }
+
+        function encodeCompanionSlots(companionSlots) {
+            // DEPRECATED
+        }
+
+        function decodeCompanionSlots(companionVars) {
+            // DEPRECATED
+        }
+
+        function defineCompanionSlots(slots) {
+            // DEPRECATED
+        }
+
+        function defineGoogleSlot(slot, opts) {
+            // DEPRECATED
+        }
+
+        function setCompanionFlashVars(playerInstance, companionSlots) {
+            // DEPRECATED
+        }
+
+        /**
+         * Used by old EMP to register companion slots on the player.
+         *
+         * Not used for SMP.
+         *
+         * @param object An EMP instance.
+         */
+        function playerBeforeEachWrite(playerInstance) {
+            // Get the preroll ad tag
+            // DEPRECATED ?
+            playerInstance.set('preroll', getPrerollAdTag());
+        }
+
+        /**
+         * Builds the data object that the smp plugins needs.
+         * @return object
+         */
+        function createPluginData(playerDomId,options) {
+            var attrname;
+            var adTag = getPrerollAdTag();
+            var debug = getCookie('bbcdotcomHtml5AdsDebug');
+            var pluginData = {
+                name: 'AdsPluginParameters',
+                data: {
+                    adTag: adTag,
+                    debug: debug
+                }
+            };
+            for (attrname in options) {
+                pluginData.data[attrname] = options[attrname];
+            }
+            return pluginData;
+        }
+
+        function suppressItems(kinds,player){
+            var settings = player.settings();
+            settings.suppressItemKind = kinds;
+            player.settings(settings);
+            return player;
+        }
+
+        /**
+         * Take a player and add the smpAds plugin to it.
+         * This needs to be done before the player is played, otherwise the ads plugin won't work.
+         *
+         * @param object playerInstance an instance of an smp player.
+         */
+        function addSmpPlugin(id, playerInstance, opts) {
+            var pluginData,
+                options = opts || {};
+
+            if (typeof playerInstance === 'undefined' || (window.bbcdotcom && bbcdotcom.config && bbcdotcom.config.isAdsEnabled && !bbcdotcom.config.isAdsEnabled())) {
+                return;
+            }
+
+            if (playerInstance.loadPlugin !== undefined && typeof playerInstance.loadPlugin === 'function') {
+                pluginData = createPluginData(id,options);
+                playerInstance.loadPlugin({
+                        html: "name:dfpAds.js",
+                        swf: "name:dfpAds.swf"
+                    },
+                    pluginData
+                );
+            }
+
+            suppressItems(['ident'],playerInstance);
+        }
+
+        return {
+            getPrerollAdTag: getPrerollAdTag,
+            getPrerollAdTagWithAdRule: getPrerollAdTagWithAdRule,
+            getPrerollAdTagForAudio: getPrerollAdTagForAudio,
+            updatePrerollAdTag: updatePrerollAdTag,
+            setupCompanionSlots: setupCompanionSlots,
+            enableCompanions: enableCompanions,
+            getCompanionSlotId: getCompanionSlotId,
+            getCompanionSlots: getCompanionSlots,
+            encodeCompanionSlots: encodeCompanionSlots,
+            decodeCompanionSlots: decodeCompanionSlots,
+            defineCompanionSlots: defineCompanionSlots,
+            setCompanionFlashVars: setCompanionFlashVars,
+            playerBeforeEachWrite: playerBeforeEachWrite,
+            addSmpPlugin: addSmpPlugin
+        };
+
+    }());
+    return bbcdotcom.av.emp.adverts;
+
+});
